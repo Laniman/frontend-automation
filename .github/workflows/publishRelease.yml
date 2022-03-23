@@ -46,14 +46,35 @@ jobs:
           git config --global user.name 'platform-deps-update'
           git config --global user.email 'platform-deps-update@airslate.com'
 
-#          git push --delete origin ${{ steps.getReleaseTag.outputs.version }}
-#          npm --no-git-tag-version version ${{ steps.getReleaseTag.outputs.version }}
-#          git add -A
-#          git commit -m '${{ steps.getReleaseTag.outputs.version }} [skip bot]'
-#          git push
-#
-#          git tag -d ${{ steps.getReleaseTag.outputs.version }}
-#          git push origin :refs/tags/${{ steps.getReleaseTag.outputs.version }}
-#          git tag ${{ steps.getReleaseTag.outputs.version }}
-#          git push origin ${{ steps.getReleaseTag.outputs.version }}
-#          npm publish --tag ${{ steps.getReleaseTag.outputs.tag }}
+          # Удалить тег локально
+          git tag -d ${{ steps.getReleaseTag.outputs.version }}
+          # Удалить тег в origin
+          git push --delete origin ${{ steps.getReleaseTag.outputs.version }}
+
+          # Установить версию и записать данные в package.json
+          npm --no-git-tag-version version ${{ steps.getReleaseTag.outputs.version }}
+
+          # Создание коммита новой версии пакета
+          git add -A
+          git commit -m '${{ steps.getReleaseTag.outputs.version }} [skip bot]'
+          git push
+
+          # Публикация пакета с конкретным тегом тегом (по умолчанию latest)
+          npm publish --tag ${{ steps.getReleaseTag.outputs.tag }}
+
+          # Создать тег локально
+          git tag ${{ steps.getReleaseTag.outputs.version }}
+          # Создать тег в origin
+          git push origin ${{ steps.getReleaseTag.outputs.version }}
+          sleep 2
+               
+      - name: Undraft target release
+        uses: actions/github-script@v5
+        with:
+          script: |
+            await github.rest.repos.updateRelease({
+              owner: context.payload.organization.login,
+              repo: context.payload.repository.name,
+              release_id: context.payload.release.id,
+              draft: false,
+            });
