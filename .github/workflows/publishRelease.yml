@@ -46,7 +46,7 @@ jobs:
           git config --global user.name 'platform-deps-update'
           git config --global user.email 'platform-deps-update@airslate.com'
 
-          git push --delete origin ${{ steps.getReleaseTag.outputs.version }}
+#          git push --delete origin ${{ steps.getReleaseTag.outputs.version }}
 #          npm --no-git-tag-version version ${{ steps.getReleaseTag.outputs.version }}
 #          git add -A
 #          git commit -m '${{ steps.getReleaseTag.outputs.version }} [skip bot]'
