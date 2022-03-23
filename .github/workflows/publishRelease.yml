@@ -1,9 +1,9 @@
 name: AutoPublishing according to release tag
 
 on:
-  push:
-    tags:
-      - '*'
+  release:
+    types:
+      - created
 
 jobs:
   validate:
@@ -72,8 +72,6 @@ jobs:
         uses: actions/github-script@v5
         with:
           script: |
-            console.log(context);
-            console.log(context.payload);
             await github.rest.repos.updateRelease({
               owner: context.payload.repository.owner.login,
               repo: context.payload.repository.name,
