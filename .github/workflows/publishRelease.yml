@@ -32,21 +32,9 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           ref: ${{ steps.getReleaseTag.outputs.branch }}
 
-      - name: Setup registry
-        run: |
-          npm config set registry https://artifactory.infrateam.xyz/artifactory/api/npm/npm/
-          npm config set always-auth true
-          echo "//artifactory.infrateam.xyz/api/npm/npm/:_authToken=${{ secrets.NPM_TOKEN }}" >> ~/.npmrc
-          echo "//artifactory.infrateam.xyz/artifactory/api/npm/npm/:_authToken=${{ secrets.NPM_TOKEN }}" >> ~/.npmrc
-          npm -v
-
       - name: Install dependencies
         if: steps.getReleaseTag.outputs.branch
         run: npm install --no-save --legacy-peer-deps
-#
-#      - name: Build
-#        if: steps.getReleaseTag.outputs.branch
-#        run: yarn build
 
       - name: Publishing
         if: steps.getReleaseTag.outputs.branch
