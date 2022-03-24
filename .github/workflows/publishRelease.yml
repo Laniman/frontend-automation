@@ -1,9 +1,9 @@
 name: AutoPublishing according to release tag
 
 on:
-  push:
-    tags:
-      - '*'
+  release:
+    types:
+      - created
 
 jobs:
   validate:
@@ -60,7 +60,7 @@ jobs:
           git push
 
           # Публикация пакета с конкретным тегом тегом (по умолчанию latest)
-          npm publish --tag ${{ steps.getReleaseTag.outputs.tag }}
+          # npm publish --tag ${{ steps.getReleaseTag.outputs.tag }}
 
           # Создать тег локально
           git tag ${{ steps.getReleaseTag.outputs.version }}
@@ -68,13 +68,13 @@ jobs:
           git push origin ${{ steps.getReleaseTag.outputs.version }}
           sleep 2
                
-#      - name: Undraft target release
-#        uses: actions/github-script@v5
-#        with:
-#          script: |
-#            await github.rest.repos.updateRelease({
-#              owner: context.payload.repository.owner.login,
-#              repo: context.payload.repository.name,
-#              release_id: context.payload.release.id,
-#              draft: false,
-#            });
+      - name: Undraft target release
+        uses: actions/github-script@v5
+        with:
+          script: |
+            await github.rest.repos.updateRelease({
+              owner: context.payload.repository.owner.login,
+              repo: context.payload.repository.name,
+              release_id: context.payload.release.id,
+              draft: false,
+            });
