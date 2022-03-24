@@ -1,0 +1,164 @@
+name: AutoPublishing according to release tag
+
+on:
+  release:
+    types:
+      - prereleased
+      - released
+
+jobs:
+  prerelase-publish:
+    name: Prerelease publish
+    if: github.event.action == 'prereleased'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup NodeJS
+        uses: actions/setup-node@v1
+        with:
+          node-version: '14.x'
+
+      - name: Get branch
+        uses: actions/github-script@v5
+        id: branch
+        with:
+          result-encoding: string
+          script: |
+            console.log('Branch:', context.payload.release.target_commitish);
+            return context.payload.release.target_commitish;
+
+      - name: Get dist tag name
+        uses: actions/github-script@v5
+        id: dist-tag
+        with:
+          result-encoding: string
+          script: |
+            console.log('Dist Tag:', context.payload.release.target_commitish.replace('/', '-'));
+            return context.payload.release.target_commitish.replace('/', '-');
+
+      - name: Get version
+        uses: actions/github-script@v5
+        id: version
+        with:
+          result-encoding: string
+          script: |
+            console.log('Version:', context.payload.release.tag_name);
+            return context.payload.release.tag_name;
+
+      - name: Checkout target branch
+        uses: actions/checkout@v2
+        if: ${{ success() }}
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          ref: ${{ steps.branch.outputs.result }}
+
+      - name: Setup registry
+        if: ${{ success() }}
+        run: |
+          npm config set always-auth true
+          echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" >> ~/.npmrc
+          npm -v
+
+      - name: Install dependencies
+        run: npm install --no-save --legacy-peer-deps
+        if: ${{ success() }}
+
+      - name: Publishing
+        if: ${{ success() }}
+        env:
+          AS_CI: true
+        run: |
+          rm -rf .git/hooks
+
+          git config --global user.name 'ci'
+          git config --global user.email 'ci@airslate.com'
+
+          # Удаление текущего релизного тега
+          git tag -d ${{ steps.version.outputs.result }}
+          git push --delete origin ${{ steps.version.outputs.result }}
+
+          # Установить версию и записать данные в package.json
+          npm --no-git-tag-version version ${{ steps.version.outputs.result }}
+
+          # Создание коммита c новой версии пакета
+          git add -A
+          git commit -m '${{ steps.version.outputs.result }} [skip bot]'
+          git push origin ${{ steps.branch.outputs.result }}
+
+          # Регистрирует опубликованный пакет с заданным тегом
+          npm publish --tag ${{ steps.dist-tag.outputs.result }}
+
+          # Пересоздание релизного тега, чтобы он смотрел на коммит c новой версией пакета
+          git tag ${{ steps.version.outputs.result }}
+          git push origin ${{ steps.version.outputs.result }}
+          sleep 2
+               
+      - name: Undraft target release
+        uses: actions/github-script@v5
+        if: ${{ success() }}
+        with:
+          script: |
+            await github.rest.repos.updateRelease({
+              owner: context.payload.repository.owner.login,
+              repo: context.payload.repository.name,
+              release_id: context.payload.release.id,
+              draft: false,
+            });
+
+  release-publish:
+    name: Release publish
+    runs-on: ubuntu-latest
+    if: github.event.action == 'released'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup registry
+        if: ${{ success() }}
+        run: |
+          npm config set registry https://registry.npmjs.org/
+          npm config set always-auth true
+          echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" >> ~/.npmrc
+          npm -v
+
+      - name: Get dist tag name
+        uses: actions/github-script@v5
+        id: dist-tag
+        with:
+          result-encoding: string
+          script: |
+            console.log('Dist Tag:', context.payload.release.target_commitish.replace('/', '-'));
+            return context.payload.release.target_commitish.replace('/', '-');
+
+      - name: Get version
+        uses: actions/github-script@v5
+        id: version
+        with:
+          result-encoding: string
+          script: |
+            console.log('Version:', context.payload.release.tag_name);
+            return context.payload.release.tag_name;
+
+      - name: Get package name
+        uses: actions/github-script@v5
+        id: package-name
+        with:
+          result-encoding: string
+          script: |
+            const packageName = require('./package.json').name;
+            console.log('Package name:', packageName);
+            return packageName;
+
+      - name: Set package as latest in NPM registry
+        if: ${{ success() }}
+        run: |
+          npm dist-tag add ${{ steps.package-name.outputs.result }}@${{ steps.version.outputs.result }} latest
+          npm dist-tag rm ${{ steps.package-name.outputs.result }} ${{ steps.dist-tag.outputs.result }}"
