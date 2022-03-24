@@ -74,25 +74,25 @@ jobs:
           git config --global user.email 'platform-deps-update@airslate.com'
 
           # Удалить тег локально
-          git tag -d ${{ steps.getReleaseTag.outputs.version }}
+          git tag -d ${{ steps.version.outputs.result }}
           # Удалить тег в origin
-          git push --delete origin ${{ steps.getReleaseTag.outputs.version }}
+          git push --delete origin ${{ steps.version.outputs.result }}
 
           # Установить версию и записать данные в package.json
-          npm --no-git-tag-version version ${{ steps.getReleaseTag.outputs.version }}
+          npm --no-git-tag-version version ${{ steps.version.outputs.result }}
 
           # Создание коммита новой версии пакета
           git add -A
-          git commit -m '${{ steps.getReleaseTag.outputs.version }} [skip bot]'
-          git push
+          git commit -m '${{ steps.version.outputs.result }} [skip bot]'
+          git push origin ${{ steps.branch.outputs.result }}
 
           # Публикация пакета с конкретным тегом тегом (по умолчанию latest)
-          # npm publish --tag ${{ steps.getReleaseTag.outputs.tag }}
+          # npm publish --tag ${{ steps.dist-tag.outputs.result }}
 
           # Создать тег локально
-          git tag ${{ steps.getReleaseTag.outputs.version }}
+          git tag ${{ steps.version.outputs.result }}
           # Создать тег в origin
-          git push origin ${{ steps.getReleaseTag.outputs.version }}
+          git push origin ${{ steps.version.outputs.result }}
           sleep 2
                
       - name: Undraft target release
