@@ -3,19 +3,22 @@ name: AutoPublishing according to release tag
 on:
   release:
     types:
-      - created
+      - prereleased
+      - released
 
 jobs:
-  validate:
+  prerelase-publish:
+    name: Prerelease publish
+    if: github.event.action == 'prereleased'
     runs-on: ubuntu-latest
-    name: 'Runner'
 
     steps:
-      - uses: actions/checkout@v2
+      - name: Checkout repository
+        uses: actions/checkout@v2
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: NodeJS setup
+      - name: Setup NodeJS
         uses: actions/setup-node@v1
         with:
           node-version: '14.x'
@@ -49,11 +52,13 @@ jobs:
 
       - name: Checkout target branch
         uses: actions/checkout@v2
+        if: ${{ success() }}
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           ref: ${{ steps.branch.outputs.result }}
 
 #      - name: Setup registry
+#        if: ${{ success() }}
 #        run: |
 #          npm config set registry https://artifactory.infrateam.xyz/artifactory/api/npm/npm/
 #          npm config set always-auth true
@@ -63,40 +68,41 @@ jobs:
 
       - name: Install dependencies
         run: npm install --no-save --legacy-peer-deps
+        if: ${{ success() }}
 
       - name: Publishing
+        if: ${{ success() }}
         env:
           AS_CI: true
         run: |
           rm -rf .git/hooks
 
-          git config --global user.name 'platform-deps-update'
-          git config --global user.email 'platform-deps-update@airslate.com'
+          git config --global user.name 'ci'
+          git config --global user.email 'ci@airslate.com'
 
-          # Удалить тег локально
+          # Удаление текущего релизного тега
           git tag -d ${{ steps.version.outputs.result }}
-          # Удалить тег в origin
           git push --delete origin ${{ steps.version.outputs.result }}
 
           # Установить версию и записать данные в package.json
           npm --no-git-tag-version version ${{ steps.version.outputs.result }}
 
-          # Создание коммита новой версии пакета
+          # Создание коммита c новой версии пакета
           git add -A
           git commit -m '${{ steps.version.outputs.result }} [skip bot]'
           git push origin ${{ steps.branch.outputs.result }}
 
-          # Публикация пакета с конкретным тегом тегом (по умолчанию latest)
+          # Регистрирует опубликованный пакет с заданным тегом
           # npm publish --tag ${{ steps.dist-tag.outputs.result }}
 
-          # Создать тег локально
+          # Пересоздание релизного тега, чтобы он смотрел на коммит c новой версией пакета
           git tag ${{ steps.version.outputs.result }}
-          # Создать тег в origin
           git push origin ${{ steps.version.outputs.result }}
           sleep 2
                
       - name: Undraft target release
         uses: actions/github-script@v5
+        if: ${{ success() }}
         with:
           script: |
             await github.rest.repos.updateRelease({
@@ -105,3 +111,57 @@ jobs:
               release_id: context.payload.release.id,
               draft: false,
             });
+
+  release-publish:
+    name: Release publish
+    runs-on: ubuntu-latest
+    if: github.event.action == 'released'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+#      - name: Setup registry
+#        if: ${{ success() }}
+#        run: |
+#          npm config set registry https://artifactory.infrateam.xyz/artifactory/api/npm/npm/
+#          npm config set always-auth true
+#          echo "//artifactory.infrateam.xyz/api/npm/npm/:_authToken=${{ secrets.NPM_TOKEN }}" >> ~/.npmrc
+#          echo "//artifactory.infrateam.xyz/artifactory/api/npm/npm/:_authToken=${{ secrets.NPM_TOKEN }}" >> ~/.npmrc
+#          npm -v
+
+      - name: Get dist tag name
+        uses: actions/github-script@v5
+        id: dist-tag
+        with:
+          result-encoding: string
+          script: |
+            console.log('Dist Tag:', context.payload.release.target_commitish.replace('/', '-'));
+            return context.payload.release.target_commitish.replace('/', '-');
+
+      - name: Get version
+        uses: actions/github-script@v5
+        id: version
+        with:
+          result-encoding: string
+          script: |
+            console.log('Version:', context.payload.release.tag_name);
+            return context.payload.release.tag_name;
+
+      - name: Get package name
+        uses: actions/github-script@v5
+        id: package-name
+        with:
+          result-encoding: string
+          script: |
+            const packageName = require('./package.json').name;
+            console.log('Package name:', packageName);
+            return packageName;
+
+      - name: Set package as latest in NPM registry
+        if: ${{ success() }}
+        run: |
+          npm dist-tag add ${{ steps.package-name.outputs.result }}@${{ steps.version.outputs.result }} latest
+          npm dist-tag rm ${{ steps.package-name.outputs.result }} ${{ steps.dist-tag.outputs.result }}"
