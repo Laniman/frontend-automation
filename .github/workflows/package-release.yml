@@ -57,14 +57,12 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           ref: ${{ steps.branch.outputs.result }}
 
-#      - name: Setup registry
-#        if: ${{ success() }}
-#        run: |
-#          npm config set registry https://artifactory.infrateam.xyz/artifactory/api/npm/npm/
-#          npm config set always-auth true
-#          echo "//artifactory.infrateam.xyz/api/npm/npm/:_authToken=${{ secrets.NPM_TOKEN }}" >> ~/.npmrc
-#          echo "//artifactory.infrateam.xyz/artifactory/api/npm/npm/:_authToken=${{ secrets.NPM_TOKEN }}" >> ~/.npmrc
-#          npm -v
+      - name: Setup registry
+        if: ${{ success() }}
+        run: |
+          npm config set always-auth true
+          echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" >> ~/.npmrc
+          npm -v
 
       - name: Install dependencies
         run: npm install --no-save --legacy-peer-deps
@@ -93,7 +91,7 @@ jobs:
           git push origin ${{ steps.branch.outputs.result }}
 
           # Регистрирует опубликованный пакет с заданным тегом
-          # npm publish --tag ${{ steps.dist-tag.outputs.result }}
+          npm publish --tag ${{ steps.dist-tag.outputs.result }}
 
           # Пересоздание релизного тега, чтобы он смотрел на коммит c новой версией пакета
           git tag ${{ steps.version.outputs.result }}
@@ -123,14 +121,13 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
-#      - name: Setup registry
-#        if: ${{ success() }}
-#        run: |
-#          npm config set registry https://artifactory.infrateam.xyz/artifactory/api/npm/npm/
-#          npm config set always-auth true
-#          echo "//artifactory.infrateam.xyz/api/npm/npm/:_authToken=${{ secrets.NPM_TOKEN }}" >> ~/.npmrc
-#          echo "//artifactory.infrateam.xyz/artifactory/api/npm/npm/:_authToken=${{ secrets.NPM_TOKEN }}" >> ~/.npmrc
-#          npm -v
+      - name: Setup registry
+        if: ${{ success() }}
+        run: |
+          npm config set registry https://registry.npmjs.org/
+          npm config set always-auth true
+          echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" >> ~/.npmrc
+          npm -v
 
       - name: Get dist tag name
         uses: actions/github-script@v5
