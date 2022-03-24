@@ -20,24 +20,51 @@ jobs:
         with:
           node-version: '14.x'
 
-      - uses: ./.github/actions/publishRelease
-        name: Get release branch
-        id: getReleaseTag
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - uses: actions/checkout@v2
-        if: steps.getReleaseTag.outputs.branch
+      - name: Get branch
+        uses: actions/github-script@v5
+        id: branch
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          ref: ${{ steps.getReleaseTag.outputs.branch }}
+          result-encoding: string
+          script: |
+            console.log('Branch:', context.payload.release.target_commitish);
+            return context.payload.release.target_commitish;
+
+      - name: Get dist tag name
+        uses: actions/github-script@v5
+        id: dist-tag
+        with:
+          result-encoding: string
+          script: |
+            console.log('Dist Tag:', context.payload.release.target_commitish.replace('/', '-'));
+            return context.payload.release.target_commitish.replace('/', '-');
+
+      - name: Get version
+        uses: actions/github-script@v5
+        id: version
+        with:
+          result-encoding: string
+          script: |
+            console.log('Version:', context.payload.release.tag_name);
+            return context.payload.release.tag_name;
+
+    - name: Checkout target branch
+      uses: actions/checkout@v2
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        ref: ${{ steps.branch.outputs.result }}
+
+#      - name: Setup registry
+#        run: |
+#          npm config set registry https://artifactory.infrateam.xyz/artifactory/api/npm/npm/
+#          npm config set always-auth true
+#          echo "//artifactory.infrateam.xyz/api/npm/npm/:_authToken=${{ secrets.NPM_TOKEN }}" >> ~/.npmrc
+#          echo "//artifactory.infrateam.xyz/artifactory/api/npm/npm/:_authToken=${{ secrets.NPM_TOKEN }}" >> ~/.npmrc
+#          npm -v
 
       - name: Install dependencies
-        if: steps.getReleaseTag.outputs.branch
         run: npm install --no-save --legacy-peer-deps
 
       - name: Publishing
-        if: steps.getReleaseTag.outputs.branch
         env:
           AS_CI: true
         run: |
