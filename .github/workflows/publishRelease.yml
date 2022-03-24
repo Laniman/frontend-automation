@@ -47,11 +47,11 @@ jobs:
             console.log('Version:', context.payload.release.tag_name);
             return context.payload.release.tag_name;
 
-    - name: Checkout target branch
-      uses: actions/checkout@v2
-      with:
-        token: ${{ secrets.GITHUB_TOKEN }}
-        ref: ${{ steps.branch.outputs.result }}
+      - name: Checkout target branch
+        uses: actions/checkout@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          ref: ${{ steps.branch.outputs.result }}
 
 #      - name: Setup registry
 #        run: |
