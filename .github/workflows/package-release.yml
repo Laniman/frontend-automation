@@ -169,4 +169,4 @@ jobs:
         if: ${{ success() }}
         run: |
           npm dist-tag add ${{ steps.package-name.outputs.result }}@${{ steps.version.outputs.result }} latest
-          npm dist-tag rm ${{ steps.package-name.outputs.result }} ${{ steps.dist-tag.outputs.result }}"
+          npm dist-tag rm ${{ steps.package-name.outputs.result }} ${{ steps.dist-tag.outputs.result }}
