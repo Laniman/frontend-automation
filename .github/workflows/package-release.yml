@@ -60,8 +60,10 @@ jobs:
       - name: Setup registry
         if: ${{ success() }}
         run: |
+          npm config set registry https://artifactory.infrateam.xyz/artifactory/api/npm/npm/
           npm config set always-auth true
-          echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" >> ~/.npmrc
+          echo "//artifactory.infrateam.xyz/api/npm/npm/:_authToken=${{ secrets.NPM_TOKEN }}" >> ~/.npmrc
+          echo "//artifactory.infrateam.xyz/artifactory/api/npm/npm/:_authToken=${{ secrets.NPM_TOKEN }}" >> ~/.npmrc
           npm -v
 
       - name: Install dependencies
@@ -97,7 +99,7 @@ jobs:
           git tag ${{ steps.version.outputs.result }}
           git push origin ${{ steps.version.outputs.result }}
           sleep 2
-               
+
       - name: Undraft target release
         uses: actions/github-script@v5
         if: ${{ success() }}
@@ -121,12 +123,18 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Setup NodeJS
+        uses: actions/setup-node@v1
+        with:
+          node-version: '14.x'
+
       - name: Setup registry
         if: ${{ success() }}
         run: |
-          npm config set registry https://registry.npmjs.org/
+          npm config set registry https://artifactory.infrateam.xyz/artifactory/api/npm/npm/
           npm config set always-auth true
-          echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" >> ~/.npmrc
+          echo "//artifactory.infrateam.xyz/api/npm/npm/:_authToken=${{ secrets.NPM_TOKEN }}" >> ~/.npmrc
+          echo "//artifactory.infrateam.xyz/artifactory/api/npm/npm/:_authToken=${{ secrets.NPM_TOKEN }}" >> ~/.npmrc
           npm -v
 
       - name: Get dist tag name
