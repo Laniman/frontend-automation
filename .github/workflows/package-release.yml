@@ -95,7 +95,7 @@ jobs:
           # Регистрирует опубликованный пакет с заданным тегом
           npm publish --tag ${{ steps.dist-tag.outputs.result }}
 
-          # Пересоздание релизного тега, чтобы он смотрел на коммит c новой версией пакета
+          # Пересоздание релизного тега, чтобы он смотрел на коммит c новой версией пакета1
           git tag ${{ steps.version.outputs.result }}
           git push origin ${{ steps.version.outputs.result }}
           sleep 2
